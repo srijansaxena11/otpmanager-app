@@ -12,12 +12,17 @@ class AuthInput extends HookWidget {
     required this.onSubmit,
     required this.enabled,
     required this.errorMsg,
+    required this.label,
+    this.helper,
+
   }) : super(key: key);
 
   final Function(String) onChanged;
   final Function() onSubmit;
   final bool enabled;
   final String errorMsg;
+  final String label;
+  final String? helper;
 
   @override
   Widget build(BuildContext context) {
@@ -27,7 +32,7 @@ class AuthInput extends HookWidget {
     void toggleObscured() {
       obscured.value = !obscured.value;
       if (passwordFocusNode.hasPrimaryFocus) {
-        return; // If focus is on text field, dont unfocus
+        return; // If focus is on text field, don't unfocus
       }
       passwordFocusNode.canRequestFocus = false; // Prevents focus if tap on eye
     }
@@ -42,7 +47,8 @@ class AuthInput extends HookWidget {
           focusNode: passwordFocusNode,
           decoration: InputDecoration(
             floatingLabelBehavior: FloatingLabelBehavior.never,
-            labelText: "Password",
+            labelText: label,
+            helperText: helper,
             filled: true,
             fillColor: state.darkTheme ? Colors.grey.shade800 : null,
             isDense: true,

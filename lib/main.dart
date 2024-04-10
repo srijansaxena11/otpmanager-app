@@ -4,10 +4,18 @@ import 'package:flutter/material.dart' hide Router;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:logger/logger.dart' hide FileOutput;
 import 'package:otp_manager/bloc/otp_manager/otp_manager_bloc.dart';
+import 'package:otp_manager/domain/account_service.dart';
 import 'package:otp_manager/domain/nextcloud_service.dart';
 import 'package:otp_manager/logger/filter.dart';
-import 'package:otp_manager/repository/local_repository.dart';
-import 'package:otp_manager/repository/nextcloud_repository.dart';
+import 'package:otp_manager/repository/interface/account_repository.dart';
+import 'package:otp_manager/repository/impl/account_repository_impl.dart';
+import 'package:otp_manager/repository/impl/nextcloud_repository_impl.dart';
+import 'package:otp_manager/repository/impl/shared_account_repository_impl.dart';
+import 'package:otp_manager/repository/impl/user_repository_impl.dart';
+import 'package:otp_manager/repository/interface/nextcloud_repository.dart';
+import 'package:otp_manager/repository/interface/shared_account_repository.dart';
+import 'package:otp_manager/repository/interface/user_repository.dart';
+import 'package:otp_manager/utils/encryption.dart';
 
 import 'logger/file_output.dart';
 import "object_box/objectbox.dart";
@@ -46,22 +54,45 @@ Future<void> main() async {
   runApp(
     MultiRepositoryProvider(
       providers: [
-        RepositoryProvider<LocalRepositoryImpl>(
-          create: (_) => LocalRepositoryImpl(),
+        RepositoryProvider<UserRepository>(
+          create: (_) => UserRepositoryImpl(),
         ),
-        RepositoryProvider<NextcloudRepositoryImpl>(
-          create: (_) => NextcloudRepositoryImpl(),
+        RepositoryProvider<AccountRepository>(
+          create: (_) => AccountRepositoryImpl(),
+        ),
+        RepositoryProvider<SharedAccountRepository>(
+          create: (_) => SharedAccountRepositoryImpl(),
+        ),
+        RepositoryProvider<NextcloudRepository>(
+          create: (context) => NextcloudRepositoryImpl(
+            userRepository: context.read<UserRepository>(),
+          ),
+        ),
+        RepositoryProvider<Encryption>(
+          create: (context) => Encryption(
+            userRepository: context.read<UserRepository>(),
+          ),
+        ),
+        RepositoryProvider<AccountService>(
+          create: (context) => AccountService(
+            accountRepository: context.read<AccountRepository>(),
+            sharedAccountRepository: context.read<SharedAccountRepository>(),
+          ),
         ),
         RepositoryProvider<NextcloudService>(
           create: (context) => NextcloudService(
-            context.read<NextcloudRepositoryImpl>(),
-            context.read<LocalRepositoryImpl>(),
+            userRepository: context.read<UserRepository>(),
+            accountService: context.read<AccountService>(),
+            accountRepository: context.read<AccountRepository>(),
+            nextcloudRepository: context.read<NextcloudRepository>(),
+            sharedAccountRepository: context.read<SharedAccountRepository>(),
+            encryption: context.read<Encryption>(),
           ),
         ),
       ],
       child: BlocProvider<OtpManagerBloc>(
         create: (context) => OtpManagerBloc(
-          localRepositoryImpl: context.read<LocalRepositoryImpl>(),
+          userRepository: context.read<UserRepository>(),
         ),
         child: const OtpManager(),
       ),

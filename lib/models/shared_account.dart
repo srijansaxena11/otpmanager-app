@@ -4,31 +4,26 @@ import 'package:otp/otp.dart';
 import '../utils/algorithms.dart';
 
 @Entity()
-class Account {
+class SharedAccount {
   int id = 0;
 
   @Unique()
-  String secret;
+  String? secret;
   @Unique()
-  String? encryptedSecret;
+  String encryptedSecret;
 
+  // Customizable fields
   String name;
   String? issuer;
-  int? digits;
-  String type;
-  int? period;
-
-  // HOTP counter
-  int? counter;
-
-  // Synchronization
-  bool deleted = false;
-  bool toUpdate = false;
-  bool isNew = true;
-
   int? position;
-
   String iconKey = 'default';
+
+  // Required fields to generate code
+  @Property(uid: 541832795838973838)
+  int period;
+  @Property(uid: 8305642788148493574)
+  int digits;
+  String type;
 
   @Transient()
   late Algorithm algorithm;
@@ -49,19 +44,39 @@ class Account {
     }
   }
 
-  Account({
-    required this.secret,
-    this.encryptedSecret,
+  int? counter;
+
+  String password;
+  String iv;
+  bool unlocked;
+
+  DateTime? expiredAt;
+
+  String sharerUserId;
+
+  // Synchronization
+  bool deleted = false;
+  bool toUpdate = false;
+  int nextcloudAccountId; // the account_id stored on nextcloud server
+
+  SharedAccount({
+    this.secret,
+    required this.encryptedSecret,
     required this.name,
     this.issuer,
-    this.digits,
-    required this.type,
-    this.period,
     this.position,
+    required this.period,
+    required this.digits,
+    required this.type,
+    required this.unlocked,
+    required this.password,
+    required this.iv,
     this.toUpdate = false,
-    this.isNew = true,
-    int? counter,
+    required this.nextcloudAccountId,
+    required this.sharerUserId,
+    this.expiredAt,
     int? dbAlgorithm,
+    int? counter,
     this.iconKey = "default",
   }) {
     if (type == "hotp") {
@@ -69,16 +84,6 @@ class Account {
     }
 
     this.dbAlgorithm = dbAlgorithm;
-
-    // set default value
-    digits = digits ?? 6;
-    period = period ?? 30;
-  }
-
-  void _ensureStableEnumValues() {
-    assert(Algorithms.sha1.index == 0);
-    assert(Algorithms.sha256.index == 1);
-    assert(Algorithms.sha512.index == 2);
   }
 
   String toUri() {
@@ -93,21 +98,24 @@ class Account {
         "${type == "hotp" ? '&counter=$counter' : ''}");
   }
 
+  void _ensureStableEnumValues() {
+    assert(Algorithms.sha1.index == 0);
+    assert(Algorithms.sha256.index == 1);
+    assert(Algorithms.sha512.index == 2);
+  }
+
   @override
   toString() => '{'
       '"id": $id, '
       '"secret": "$encryptedSecret", '
       '"name": "$name", '
       '"issuer": "$issuer", '
-      '"algorithm": "$dbAlgorithm", '
-      '"digits": $digits, '
-      '"type": "$type", '
-      '"period": $period, '
-      '"counter": $counter, '
       '"position": $position, '
+      '"unlocked": $unlocked, '
       '"icon": "$iconKey", '
       '"deleted": $deleted, '
       '"toUpdate": $toUpdate, '
-      '"isNew": $isNew'
+      '"accountId": $nextcloudAccountId, '
+      '"expiredAt": "$expiredAt"'
       '}';
 }

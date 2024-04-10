@@ -7,12 +7,14 @@ import 'package:otp_manager/bloc/login/login_bloc.dart';
 import 'package:otp_manager/bloc/manual/manual_bloc.dart';
 import 'package:otp_manager/bloc/qr_code_scanner/qr_code_scanner_bloc.dart';
 import 'package:otp_manager/bloc/settings/settings_bloc.dart';
+import 'package:otp_manager/domain/account_service.dart';
 import 'package:otp_manager/domain/nextcloud_service.dart';
-import 'package:otp_manager/repository/local_repository.dart';
+import 'package:otp_manager/repository/interface/account_repository.dart';
+import 'package:otp_manager/repository/interface/shared_account_repository.dart';
+import 'package:otp_manager/repository/interface/user_repository.dart';
 
 import '../bloc/home/home_bloc.dart';
 import '../bloc/web_viewer/web_viewer_bloc.dart';
-import '../models/account.dart';
 import '../screens/account_details.dart';
 import '../screens/auth.dart';
 import '../screens/home/home.dart';
@@ -31,7 +33,10 @@ class Router {
         return CupertinoPageRoute(
           builder: (_) => BlocProvider<HomeBloc>(
             create: (context) => HomeBloc(
-              localRepositoryImpl: context.read<LocalRepositoryImpl>(),
+              userRepository: context.read<UserRepository>(),
+              accountRepository: context.read<AccountRepository>(),
+              accountService: context.read<AccountService>(),
+              sharedAccountRepository: context.read<SharedAccountRepository>(),
               nextcloudService: context.read<NextcloudService>(),
             ),
             child: const Home(),
@@ -43,7 +48,7 @@ class Router {
         return CupertinoPageRoute(
           builder: (_) => BlocProvider<SettingsBloc>(
             create: (context) => SettingsBloc(
-              localRepositoryImpl: context.read<LocalRepositoryImpl>(),
+              userRepository: context.read<UserRepository>(),
             ),
             child: Settings(),
           ),
@@ -52,7 +57,8 @@ class Router {
         return CupertinoPageRoute(
           builder: (_) => BlocProvider<QrCodeScannerBloc>(
             create: (context) => QrCodeScannerBloc(
-              localRepositoryImpl: context.read<LocalRepositoryImpl>(),
+              accountRepository: context.read<AccountRepository>(),
+              accountService: context.read<AccountService>(),
             ),
             child: QrCodeScanner(),
           ),
@@ -61,8 +67,11 @@ class Router {
         return CupertinoPageRoute(
           builder: (_) => BlocProvider<AccountDetailsBloc>(
             create: (context) => AccountDetailsBloc(
-              localRepositoryImpl: context.read<LocalRepositoryImpl>(),
-              account: settings.arguments as Account,
+              userRepository: context.read<UserRepository>(),
+              accountRepository: context.read<AccountRepository>(),
+              accountService: context.read<AccountService>(),
+              sharedAccountRepository: context.read<SharedAccountRepository>(),
+              account: settings.arguments as dynamic,
             ),
             child: const AccountDetails(),
           ),
@@ -71,7 +80,7 @@ class Router {
         return CupertinoPageRoute(
           builder: (_) => BlocProvider<LoginBloc>(
             create: (context) => LoginBloc(
-              localRepositoryImpl: context.read<LocalRepositoryImpl>(),
+              userRepository: context.read<UserRepository>(),
             ),
             child: const Login(),
           ),
@@ -80,20 +89,22 @@ class Router {
         return CupertinoPageRoute(
           builder: (_) => BlocProvider<WebViewerBloc>(
             create: (context) => WebViewerBloc(
+              userRepository: context.read<UserRepository>(),
               nextcloudUrl: settings.arguments as String,
-              localRepositoryImpl: context.read<LocalRepositoryImpl>(),
             ),
             child: const WebViewer(),
           ),
         );
       case manualRoute:
         Map arguments = settings.arguments as Map;
-        Account? account = arguments["account"];
+        var account = arguments["account"];
 
         return CupertinoPageRoute(
           builder: (_) => BlocProvider<ManualBloc>(
             create: (context) => ManualBloc(
-              localRepositoryImpl: context.read<LocalRepositoryImpl>(),
+              accountRepository: context.read<AccountRepository>(),
+              sharedAccountRepository: context.read<SharedAccountRepository>(),
+              accountService: context.read<AccountService>(),
               account: account,
             ),
             child: const Manual(),
@@ -103,7 +114,7 @@ class Router {
         return CupertinoPageRoute(
           builder: (_) => BlocProvider<AuthBloc>(
             create: (context) => AuthBloc(
-              localRepositoryImpl: context.read<LocalRepositoryImpl>(),
+              userRepository: context.read<UserRepository>(),
               nextcloudService: context.read<NextcloudService>(),
             ),
             child: Auth(),

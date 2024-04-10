@@ -16,11 +16,8 @@ class HomeBody extends StatelessWidget {
   Widget build(BuildContext context) {
     return BlocConsumer<HomeBloc, HomeState>(
       listener: (context, state) {
-        if (state.syncError != "") {
-          showSnackBar(context: context, msg: state.syncError);
-        }
-        if (state.accountDeleted != "") {
-          showSnackBar(context: context, msg: state.accountDeleted);
+        if (state.message != "") {
+          showSnackBar(context: context, msg: state.message);
         }
       },
       builder: (context, state) {
@@ -56,7 +53,7 @@ class HomeBody extends StatelessWidget {
                 ),
               ),
             ],
-            if (state.accounts.isEmpty)
+            if (state.accounts.isEmpty && state.searchBarValue == "")
               Positioned(
                 right: 0,
                 bottom: 0,
@@ -71,7 +68,17 @@ class HomeBody extends StatelessWidget {
                 onRefresh: () async =>
                     context.read<HomeBloc>().add(NextcloudSync()),
                 child: state.accounts.isEmpty
-                    ? const EmptyData()
+                    ? (state.searchBarValue == ""
+                        ? const EmptyData(
+                            imageName: "no_accounts",
+                            title: "Add your first account",
+                            description:
+                                "You currently have no account. Synchronise by dragging down or create a new one below.")
+                        : EmptyData(
+                            imageName: "no_results",
+                            title: "No accounts for: ${state.searchBarValue}",
+                            description: "",
+                          ))
                     : const OtpAccountsList(),
               ),
             )

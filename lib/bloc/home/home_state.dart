@@ -1,15 +1,13 @@
 import 'package:equatable/equatable.dart';
-import 'package:otp_manager/models/account.dart';
 import 'package:otp_manager/models/user.dart';
 
 class HomeState extends Equatable {
-  final List<Account> accounts;
+  final List<dynamic> accounts; // Account | SharedAccount
   final int refreshTime;
   final int syncStatus; // 1 = SYNCING, 0 = OK, -1 = ERROR
-  final String syncError;
   final String password;
   final bool isGuest;
-  final String accountDeleted;
+  final String message;
   final bool? sortedByNameDesc;
   final bool? sortedByIssuerDesc;
   final bool? sortedByIdDesc;
@@ -20,10 +18,9 @@ class HomeState extends Equatable {
     required this.accounts,
     required this.refreshTime,
     required this.syncStatus,
-    required this.syncError,
     required this.password,
     required this.isGuest,
-    required this.accountDeleted,
+    required this.message,
     required this.sortedByNameDesc,
     required this.sortedByIssuerDesc,
     required this.sortedByIdDesc,
@@ -35,10 +32,9 @@ class HomeState extends Equatable {
       : accounts = [],
         refreshTime = 30,
         syncStatus = 1,
-        syncError = "",
         password = user.password ?? "",
         isGuest = user.isGuest,
-        accountDeleted = "",
+        message = "",
         sortedByNameDesc = user.sortedByNameDesc,
         sortedByIssuerDesc = user.sortedByIssuerDesc,
         sortedByIdDesc = user.sortedByIdDesc,
@@ -46,11 +42,10 @@ class HomeState extends Equatable {
         isAppUpdated = false;
 
   HomeState copyWith({
-    List<Account>? accounts,
+    List<dynamic>? accounts,
     int? refreshTime,
     int? syncStatus,
-    String? syncError,
-    String? accountDeleted,
+    String? message,
     dynamic sortedByNameDesc,
     dynamic sortedByIssuerDesc,
     dynamic sortedByIdDesc,
@@ -61,10 +56,9 @@ class HomeState extends Equatable {
       accounts: accounts ?? this.accounts,
       refreshTime: refreshTime ?? this.refreshTime,
       syncStatus: syncStatus ?? this.syncStatus,
-      syncError: syncError ?? this.syncError,
       password: password,
       isGuest: isGuest,
-      accountDeleted: accountDeleted ?? this.accountDeleted,
+      message: message ?? this.message,
       sortedByNameDesc: sortedByNameDesc == "null"
           ? null
           : sortedByNameDesc ?? this.sortedByNameDesc,
@@ -84,8 +78,7 @@ class HomeState extends Equatable {
         accounts,
         refreshTime,
         syncStatus,
-        syncError,
-        accountDeleted,
+        message,
         sortedByNameDesc,
         sortedByIssuerDesc,
         sortedByIdDesc,

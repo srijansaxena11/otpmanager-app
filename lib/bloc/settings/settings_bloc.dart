@@ -2,17 +2,17 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otp_manager/bloc/settings/settings_event.dart';
 import 'package:otp_manager/bloc/settings/settings_state.dart';
-import 'package:otp_manager/models/user.dart';
-import 'package:otp_manager/repository/local_repository.dart';
 import 'package:otp_manager/logger/save_log.dart';
+import 'package:otp_manager/models/user.dart';
+import 'package:otp_manager/repository/interface/user_repository.dart';
 import 'package:otp_manager/utils/launch_url.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
 class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
-  final LocalRepositoryImpl localRepositoryImpl;
+  final UserRepository userRepository;
 
-  SettingsBloc({required this.localRepositoryImpl})
-      : super(SettingsState.initial(localRepositoryImpl.getUser()!)) {
+  SettingsBloc({required this.userRepository})
+      : super(SettingsState.initial(userRepository.get()!)) {
     on<SaveLog>(_onSaveLog);
     on<InitPackageInfo>(_onInitPackageInfo);
     on<OpenLink>(_onOpenLink);
@@ -40,13 +40,13 @@ class SettingsBloc extends Bloc<SettingsEvent, SettingsState> {
   void _onAskTimeChanged(AskTimeChanged event, Emitter<SettingsState> emit) {
     emit(state.copyWith(selectedAskTimeIndex: event.index));
 
-    User user = localRepositoryImpl.getUser()!;
+    User user = userRepository.get()!;
 
     user.dbPasswordAskTime = event.index;
 
     _updatePasswordExpirationDate(user);
 
-    localRepositoryImpl.updateUser(user);
+    userRepository.update(user);
   }
 
   void _updatePasswordExpirationDate(User user) {

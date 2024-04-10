@@ -12,7 +12,6 @@ import 'package:otp_manager/utils/simple_icons.dart';
 
 import '../bloc/icon_picker/icon_picker_bloc.dart';
 import '../bloc/manual/manual_state.dart';
-import '../repository/local_repository.dart';
 import 'icon_picker.dart';
 
 class Manual extends HookWidget {
@@ -66,8 +65,6 @@ class Manual extends HookWidget {
                                         builder: (BuildContext context) {
                                           return BlocProvider<IconPickerBloc>(
                                             create: (context) => IconPickerBloc(
-                                              localRepositoryImpl: context
-                                                  .read<LocalRepositoryImpl>(),
                                               issuer: state.issuer,
                                             ),
                                             child: const IconPicker(),
@@ -161,168 +158,173 @@ class Manual extends HookWidget {
                     },
                   ),
                 ),
-                Padding(
-                  padding: const EdgeInsets.all(15.0),
-                  child: TextFormField(
-                    initialValue: state.secretKey,
-                    readOnly: state.isEdit,
-                    decoration: InputDecoration(
-                      border: const OutlineInputBorder(),
-                      labelText: "Secret key",
-                      errorText: state.secretKeyError,
-                      suffixIcon: state.secretKeyError == null
-                          ? const Icon(Icons.vpn_key)
-                          : const Icon(Icons.error, color: Colors.red),
-                    ),
-                    onChanged: (value) {
-                      context
-                          .read<ManualBloc>()
-                          .add(SecretKeyChanged(secretKey: value));
-                    },
-                    onTap: () {
-                      if (state.isEdit) {
-                        Clipboard.setData(ClipboardData(text: state.secretKey));
-                        showSnackBar(
-                            context: context, msg: "Secrey key copied");
-                      }
-                    },
-                  ),
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 80,
-                      child: Padding(
-                        padding: const EdgeInsets.all(15.0),
-                        child: DropdownButtonFormField2(
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: "Type of code",
-                          ),
-                          dropdownDecoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4.0),
-                          ),
-                          value: state.codeTypeValue,
-                          items: const [
-                            DropdownMenuItem(
-                              value: "totp",
-                              child: Text("Based on time (TOTP)"),
-                            ),
-                            DropdownMenuItem(
-                              value: "hotp",
-                              child: Text("Based on counter (HOTP)"),
-                            ),
-                          ],
-                          onChanged: (String? value) {
-                            value == "hotp"
-                                ? animationController.forward()
-                                : animationController.reverse();
-                            context.read<ManualBloc>().add(
-                                CodeTypeValueChanged(codeTypeValue: value!));
-                          },
-                        ),
+                if (!state.isSharedAccount) ...[
+                  Padding(
+                    padding: const EdgeInsets.all(15.0),
+                    child: TextFormField(
+                      initialValue: state.secretKey,
+                      readOnly: state.isEdit,
+                      decoration: InputDecoration(
+                        border: const OutlineInputBorder(),
+                        labelText: "Secret key",
+                        errorText: state.secretKeyError,
+                        suffixIcon: state.secretKeyError == null
+                            ? const Icon(Icons.vpn_key)
+                            : const Icon(Icons.error, color: Colors.red),
                       ),
+                      onChanged: (value) {
+                        context
+                            .read<ManualBloc>()
+                            .add(SecretKeyChanged(secretKey: value));
+                      },
+                      onTap: () {
+                        if (state.isEdit) {
+                          Clipboard.setData(
+                              ClipboardData(text: state.secretKey));
+                          showSnackBar(
+                              context: context, msg: "Secrey key copied");
+                        }
+                      },
                     ),
-                    if (animation != 0)
+                  ),
+                  Row(
+                    children: [
                       Expanded(
-                        flex: animation,
+                        flex: 80,
                         child: Padding(
-                          padding:
-                              const EdgeInsets.fromLTRB(0, 15.0, 15.0, 15.0),
+                          padding: const EdgeInsets.all(15.0),
                           child: DropdownButtonFormField2(
                             decoration: const InputDecoration(
                               border: OutlineInputBorder(),
-                              labelText: "Interval",
+                              labelText: "Type of code",
                             ),
                             dropdownDecoration: BoxDecoration(
                               borderRadius: BorderRadius.circular(4.0),
                             ),
-                            value: state.intervalValue,
+                            value: state.codeTypeValue,
                             items: const [
-                              DropdownMenuItem(value: 30, child: Text("30s")),
-                              DropdownMenuItem(value: 45, child: Text("45s")),
-                              DropdownMenuItem(value: 60, child: Text("60s")),
+                              DropdownMenuItem(
+                                value: "totp",
+                                child: Text("Based on time (TOTP)"),
+                              ),
+                              DropdownMenuItem(
+                                value: "hotp",
+                                child: Text("Based on counter (HOTP)"),
+                              ),
                             ],
-                            onChanged: (int? value) {
-                              if (value == null) return;
+                            onChanged: (String? value) {
+                              value == "hotp"
+                                  ? animationController.forward()
+                                  : animationController.reverse();
                               context.read<ManualBloc>().add(
-                                  IntervalValueChanged(intervalValue: value));
+                                  CodeTypeValueChanged(codeTypeValue: value!));
                             },
                           ),
                         ),
                       ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 5,
-                      child: Padding(
-                        padding: const EdgeInsets.fromLTRB(15.0, 15.0, 0, 15.0),
-                        child: DropdownButtonFormField2(
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: "Algorithm",
+                      if (animation != 0)
+                        Expanded(
+                          flex: animation,
+                          child: Padding(
+                            padding:
+                                const EdgeInsets.fromLTRB(0, 15.0, 15.0, 15.0),
+                            child: DropdownButtonFormField2(
+                              decoration: const InputDecoration(
+                                border: OutlineInputBorder(),
+                                labelText: "Interval",
+                              ),
+                              dropdownDecoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(4.0),
+                              ),
+                              value: state.intervalValue,
+                              items: const [
+                                DropdownMenuItem(value: 30, child: Text("30s")),
+                                DropdownMenuItem(value: 45, child: Text("45s")),
+                                DropdownMenuItem(value: 60, child: Text("60s")),
+                              ],
+                              onChanged: (int? value) {
+                                if (value == null) return;
+                                context.read<ManualBloc>().add(
+                                    IntervalValueChanged(intervalValue: value));
+                              },
+                            ),
                           ),
-                          dropdownDecoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4.0),
+                        ),
+                    ],
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: Padding(
+                          padding:
+                              const EdgeInsets.fromLTRB(15.0, 15.0, 0, 15.0),
+                          child: DropdownButtonFormField2(
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: "Algorithm",
+                            ),
+                            dropdownDecoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4.0),
+                            ),
+                            value: state.algorithmValue,
+                            items: const [
+                              DropdownMenuItem(
+                                value: "SHA1",
+                                child: Text("SHA1"),
+                              ),
+                              DropdownMenuItem(
+                                value: "SHA256",
+                                child: Text("SHA256"),
+                              ),
+                              DropdownMenuItem(
+                                value: "SHA512",
+                                child: Text("SHA512"),
+                              ),
+                            ],
+                            onChanged: (String? value) {
+                              context.read<ManualBloc>().add(
+                                  AlgorithmValueChanged(
+                                      algorithmValue: value!));
+                            },
                           ),
-                          value: state.algorithmValue,
-                          items: const [
-                            DropdownMenuItem(
-                              value: "SHA1",
-                              child: Text("SHA1"),
-                            ),
-                            DropdownMenuItem(
-                              value: "SHA256",
-                              child: Text("SHA256"),
-                            ),
-                            DropdownMenuItem(
-                              value: "SHA512",
-                              child: Text("SHA512"),
-                            ),
-                          ],
-                          onChanged: (String? value) {
-                            context.read<ManualBloc>().add(
-                                AlgorithmValueChanged(algorithmValue: value!));
-                          },
                         ),
                       ),
-                    ),
-                    Expanded(
-                      flex: 5,
-                      child: Padding(
-                        padding: const EdgeInsets.all(15.0),
-                        child: DropdownButtonFormField2(
-                          decoration: const InputDecoration(
-                            border: OutlineInputBorder(),
-                            labelText: "Digits",
-                          ),
-                          dropdownDecoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(4.0),
-                          ),
-                          value: state.digitsValue,
-                          items: const [
-                            DropdownMenuItem(
-                              value: 4,
-                              child: Text("4"),
+                      Expanded(
+                        flex: 5,
+                        child: Padding(
+                          padding: const EdgeInsets.all(15.0),
+                          child: DropdownButtonFormField2(
+                            decoration: const InputDecoration(
+                              border: OutlineInputBorder(),
+                              labelText: "Digits",
                             ),
-                            DropdownMenuItem(
-                              value: 6,
-                              child: Text("6"),
+                            dropdownDecoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(4.0),
                             ),
-                          ],
-                          onChanged: (int? value) {
-                            if (value == null) return;
-                            context
-                                .read<ManualBloc>()
-                                .add(DigitsValueChanged(digitsValue: value));
-                          },
+                            value: state.digitsValue,
+                            items: const [
+                              DropdownMenuItem(
+                                value: 4,
+                                child: Text("4"),
+                              ),
+                              DropdownMenuItem(
+                                value: 6,
+                                child: Text("6"),
+                              ),
+                            ],
+                            onChanged: (int? value) {
+                              if (value == null) return;
+                              context
+                                  .read<ManualBloc>()
+                                  .add(DigitsValueChanged(digitsValue: value));
+                            },
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
+                    ],
+                  ),
+                ]
               ],
             ),
           );

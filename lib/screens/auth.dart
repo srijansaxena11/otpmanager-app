@@ -74,20 +74,18 @@ class Auth extends HookWidget {
           return Stack(
             alignment: Alignment.center,
             children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(0, 0, 0, 250),
-                child: Icon(
-                  Icons.lock,
-                  size: 100,
-                  color: Colors.blue,
-                ),
-              ),
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
+                  Icon(
+                    Icons.lock,
+                    size: 100,
+                    color: Theme.of(context).primaryColor,
+                  ),
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(10, 20, 10, 0),
+                    padding: const EdgeInsets.fromLTRB(10, 50, 10, 50),
                     child: AuthInput(
+                      label: "Password",
                       onChanged: (value) => context
                           .read<AuthBloc>()
                           .add(PasswordChanged(password: value)),
@@ -97,6 +95,16 @@ class Auth extends HookWidget {
                       errorMsg: state.message,
                     ),
                   ),
+                  if (state.canShowFingerAuth)
+                    IconButton(
+                      onPressed: () =>
+                          context.read<AuthBloc>().add(ShowFingerAuth()),
+                      icon: Icon(
+                        Icons.fingerprint,
+                        size: 60,
+                        color: Theme.of(context).primaryColor,
+                      ),
+                    ),
                 ],
               ),
             ],

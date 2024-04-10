@@ -23,12 +23,13 @@ class WebViewerState extends Equatable {
         error = "",
         webViewController = WebViewController();
 
-  WebViewerState copyWith(
-      {double? percentage,
-      bool? isLogin,
-      bool? isLoading,
-      String? error,
-      WebViewController? webViewController}) {
+  WebViewerState copyWith({
+    double? percentage,
+    bool? isLogin,
+    bool? isLoading,
+    String? error,
+    WebViewController? webViewController,
+  }) {
     return WebViewerState(
       percentage: percentage ?? this.percentage,
       isLogin: isLogin ?? this.isLogin,

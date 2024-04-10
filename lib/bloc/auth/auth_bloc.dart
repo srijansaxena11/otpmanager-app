@@ -4,7 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otp_manager/bloc/auth/auth_event.dart';
 import 'package:otp_manager/bloc/auth/auth_state.dart';
-import 'package:otp_manager/repository/local_repository.dart';
+import 'package:otp_manager/repository/interface/user_repository.dart';
 import 'package:otp_manager/routing/constants.dart';
 
 import '../../domain/nextcloud_service.dart';
@@ -12,25 +12,23 @@ import '../../models/user.dart';
 import '../../routing/navigation_service.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
-  final LocalRepositoryImpl localRepositoryImpl;
+  final UserRepository userRepository;
   final NextcloudService nextcloudService;
-  late User user = localRepositoryImpl.getUser()!;
+  late User user = userRepository.get()!;
 
   final NavigationService _navigationService = NavigationService();
 
   AuthBloc({
-    required this.localRepositoryImpl,
+    required this.userRepository,
     required this.nextcloudService,
-  }) : super(
-          AuthState.initial(localRepositoryImpl.getUser()!),
-        ) {
+  }) : super(const AuthState.initial()) {
     on<Authenticated>(_onAuthenticated);
     on<PasswordSubmit>(_onPasswordSubmit);
     on<PasswordChanged>(_onPasswordChanged);
     on<ResetAttempts>(_onResetAttempts);
     on<ShowFingerAuth>(_onShowFingerAuth);
 
-    if (state.password != "") {
+    if (user.password != null) {
       add(ShowFingerAuth());
     }
   }
@@ -51,7 +49,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
           DateTime.now().add(const Duration(minutes: 5));
     }
 
-    localRepositoryImpl.updateUser(user);
+    userRepository.update(user);
   }
 
   void _onResetAttempts(ResetAttempts event, Emitter<AuthState> emit) {
@@ -75,9 +73,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (state.attempts == 0) {
       emit(state.copyWith(attempts: 3));
     }
-
-    emit(state.copyWith(isError: false));
-    emit(state.copyWith(isError: true));
   }
 
   void _onAuthenticated(Authenticated event, Emitter<AuthState> emit) {
@@ -100,7 +95,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         user.password = password;
         user.iv = iv;
 
-        localRepositoryImpl.updateUser(user);
+        userRepository.update(user);
       } else {
         _error(emit, result["error"]!);
         return;

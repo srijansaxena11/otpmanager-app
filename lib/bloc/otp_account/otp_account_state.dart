@@ -2,16 +2,23 @@ import 'package:equatable/equatable.dart';
 
 class OtpAccountState extends Equatable {
   final String? otpCode;
+  final bool disableIncrement;
 
-  const OtpAccountState({required this.otpCode});
+  const OtpAccountState({
+    required this.otpCode,
+    required this.disableIncrement,
+  });
 
-  const OtpAccountState.initial() : this(otpCode: null);
+  const OtpAccountState.initial()
+      : this(otpCode: null, disableIncrement: false);
 
-  OtpAccountState copyWith({String? otpCode}) {
+  OtpAccountState copyWith({String? otpCode, bool? disableIncrement}) {
     return OtpAccountState(
-        otpCode: otpCode == "null" ? null : otpCode ?? this.otpCode);
+      otpCode: otpCode == "null" ? null : otpCode ?? this.otpCode,
+      disableIncrement: disableIncrement ?? this.disableIncrement,
+    );
   }
 
   @override
-  List<Object?> get props => [otpCode];
+  List<Object?> get props => [otpCode, disableIncrement];
 }

@@ -1,20 +1,28 @@
 import 'package:diacritic/diacritic.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:otp_manager/repository/interface/account_repository.dart';
+import 'package:otp_manager/repository/interface/shared_account_repository.dart';
 import 'package:otp_manager/utils/base32.dart';
+import 'package:otp_manager/utils/icon_picker_helper.dart';
 
+import '../../domain/account_service.dart';
 import '../../models/account.dart';
-import '../../repository/local_repository.dart';
-import '../../utils/simple_icons.dart';
 import '../../utils/uri_decoder.dart';
 import 'manual_event.dart';
 import 'manual_state.dart';
 
 class ManualBloc extends Bloc<ManualEvent, ManualState> {
-  final Account? account;
-  final LocalRepositoryImpl localRepositoryImpl;
+  final dynamic account; // Account | SharedAccount
+  final AccountRepository accountRepository;
+  final SharedAccountRepository sharedAccountRepository;
+  final AccountService accountService;
 
-  ManualBloc({this.account, required this.localRepositoryImpl})
-      : super(ManualState.initial(account)) {
+  ManualBloc({
+    this.account,
+    required this.accountRepository,
+    required this.sharedAccountRepository,
+    required this.accountService,
+  }) : super(ManualState.initial(account)) {
     on<AddOrEditAccount>(_onAddOrEditAccount);
     on<IconKeyChanged>(_onIconKeyChanged);
     on<NameChanged>(_onNameChanged);
@@ -26,9 +34,56 @@ class ManualBloc extends Bloc<ManualEvent, ManualState> {
     on<DigitsValueChanged>(_onDigitsValueChanged);
   }
 
-  void _storeAccount(Emitter<ManualState> emit, Account account, String msg) {
-    localRepositoryImpl.updateAccount(account);
+  void _updateAccount(Emitter<ManualState> emit, dynamic account, String msg) {
+    if (account is Account) {
+      accountRepository.update(account);
+    } else {
+      sharedAccountRepository.update(account);
+    }
     emit(state.copyWith(message: msg));
+  }
+
+  bool _isFormValid(
+      String name, String issuer, String secretKey, Emitter<ManualState> emit) {
+    bool isValid = true;
+
+    if (name.isEmpty) {
+      emit(state.copyWith(nameError: "The account name is required"));
+      isValid = false;
+    } else if (name.length > 256) {
+      emit(state.copyWith(
+          nameError: "The account name cannot be longer than 256 characters"));
+      isValid = false;
+    }
+
+    if (issuer.length > 256) {
+      emit(state.copyWith(
+          issuer: "The account issuer cannot be longer than 256 characters"));
+      isValid = false;
+    }
+
+    if (account != null) return isValid;
+
+    if (secretKey.isEmpty) {
+      emit(state.copyWith(secretKeyError: "The secret key is required"));
+      isValid = false;
+    } else if (secretKey.length < 16) {
+      emit(state.copyWith(
+          secretKeyError:
+              "The secret key cannot be shorter than 16 characters"));
+      isValid = false;
+    } else if (secretKey.length > 512) {
+      emit(state.copyWith(
+          secretKeyError:
+              "The secret key cannot be longer than 512 characters"));
+      isValid = false;
+    } else if (!Base32.isValid(secretKey)) {
+      emit(state.copyWith(
+          secretKeyError: "The secret key is not base 32 encoded"));
+      isValid = false;
+    }
+
+    return isValid;
   }
 
   void _onAddOrEditAccount(AddOrEditAccount event, Emitter<ManualState> emit) {
@@ -36,49 +91,12 @@ class ManualBloc extends Bloc<ManualEvent, ManualState> {
     String issuer = Uri.decodeFull(removeDiacritics(state.issuer.trim()));
     String secretKey = state.secretKey.trim().toUpperCase();
 
-    if (name.isEmpty) {
-      emit(state.copyWith(nameError: "The account name is required"));
-    } else if (name.length > 256) {
-      emit(state.copyWith(
-          nameError: "The account name cannot be longer than 256 characters"));
-    }
-
-    if (issuer.length > 256) {
-      emit(state.copyWith(
-          issuer: "The account issuer cannot be longer than 256 characters"));
-    }
-
-    if (secretKey.isEmpty) {
-      emit(state.copyWith(secretKeyError: "The secret key is required"));
-    } else if (secretKey.length < 16) {
-      emit(state.copyWith(
-          secretKeyError:
-              "The secret key cannot be shorter than 16 characters"));
-    } else if (secretKey.length > 512) {
-      emit(state.copyWith(
-          secretKeyError:
-              "The secret key cannot be longer than 512 characters"));
-    } else if (!Base32.isValid(secretKey)) {
-      emit(state.copyWith(
-          secretKeyError: "The secret key is not base 32 encoded"));
-    }
-
-    if (state.nameError == null &&
-        state.issuerError == null &&
-        state.secretKeyError == null) {
-      Account newAccount;
-      int? lastPosition = localRepositoryImpl.getAccountLastPosition();
-      int position;
-
-      if (lastPosition != null) {
-        position = lastPosition + 1;
-      } else {
-        position = 0;
-      }
+    if (_isFormValid(name, issuer, secretKey, emit)) {
+      int position = accountService.getLastPosition() + 1;
 
       if (account == null) {
-        newAccount = Account(
-          icon: state.iconKey,
+        Account newAccount = Account(
+          iconKey: state.iconKey,
           secret: secretKey,
           name: name,
           issuer: issuer,
@@ -89,14 +107,15 @@ class ManualBloc extends Bloc<ManualEvent, ManualState> {
           position: position,
         );
 
-        Account? sameAccount =
-            localRepositoryImpl.getAccountBySecret(secretKey);
+        Account? sameAccount = accountRepository.getBySecret(secretKey);
 
         if (sameAccount == null) {
-          _storeAccount(emit, newAccount, "New account has been added");
+          accountRepository.add(newAccount);
+          emit(state.copyWith(message: "New account has been added"));
         } else if (sameAccount.deleted) {
           newAccount.id = sameAccount.id;
-          _storeAccount(emit, newAccount, "New account has been added");
+          accountRepository.add(newAccount);
+          emit(state.copyWith(message: "New account has been added"));
         } else {
           emit(
               state.copyWith(secretKeyError: "This secret key already exists"));
@@ -105,16 +124,16 @@ class ManualBloc extends Bloc<ManualEvent, ManualState> {
         account?.iconKey = state.iconKey;
         account?.name = name;
         account?.issuer = issuer;
-        account?.dbAlgorithm =
-            UriDecoder.getAlgorithmFromString(state.algorithmValue);
-        account?.digits = state.digitsValue;
-        account?.type = state.codeTypeValue;
-        account?.period =
-            state.codeTypeValue == "totp" ? state.intervalValue : null;
-        account?.toUpdate = true;
-        newAccount = account!;
+        if (account is Account) {
+          account?.dbAlgorithm =
+              UriDecoder.getAlgorithmFromString(state.algorithmValue);
+          account?.digits = state.digitsValue;
+          account?.type = state.codeTypeValue;
+          account?.period =
+              state.codeTypeValue == "totp" ? state.intervalValue : null;
+        }
 
-        _storeAccount(emit, newAccount, "Account has been edited");
+        _updateAccount(emit, account!, "Account has been edited");
       }
     }
   }
@@ -134,8 +153,7 @@ class ManualBloc extends Bloc<ManualEvent, ManualState> {
       state.copyWith(
         iconKey: event.issuer.isEmpty
             ? "default"
-            : simpleIcons.keys.firstWhere((v) => v.contains(event.issuer),
-                orElse: () => "default"),
+            : IconPickerHelper.findFirst(event.issuer),
       ),
     );
   }

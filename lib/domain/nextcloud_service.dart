@@ -1,49 +1,52 @@
 import 'dart:convert';
 
-import 'package:http/http.dart' as http;
+import 'package:otp_manager/domain/account_service.dart';
 import 'package:otp_manager/main.dart';
-import 'package:otp_manager/repository/local_repository.dart';
+import 'package:otp_manager/models/account.dart';
+import 'package:otp_manager/repository/interface/account_repository.dart';
+import 'package:otp_manager/repository/interface/shared_account_repository.dart';
+import 'package:otp_manager/repository/interface/user_repository.dart';
 import 'package:otp_manager/routing/constants.dart';
 import 'package:otp_manager/routing/navigation_service.dart';
 import 'package:otp_manager/utils/encryption.dart';
+import 'package:otp_manager/utils/nextcloud_ocs_api.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
-import '../repository/nextcloud_repository.dart';
+import '../repository/interface/nextcloud_repository.dart';
 import '../utils/base32.dart';
 
 class NextcloudService {
-  final NextcloudRepositoryImpl _nextcloudRepositoryImpl;
-  final LocalRepositoryImpl _localRepositoryImpl;
+  final NextcloudRepository nextcloudRepository;
+  final UserRepository userRepository;
+  final AccountRepository accountRepository;
+  final AccountService accountService;
+  final SharedAccountRepository sharedAccountRepository;
+  final Encryption encryption;
 
-  NextcloudService(this._nextcloudRepositoryImpl, this._localRepositoryImpl);
+  NextcloudService({
+    required this.nextcloudRepository,
+    required this.userRepository,
+    required this.accountRepository,
+    required this.accountService,
+    required this.sharedAccountRepository,
+    required this.encryption,
+  });
 
   Future<Map<String, String?>> checkPassword(String password) async {
     logger.d("NextcloudService.checkPassword start");
 
     Map<String, String?> result = {"error": null, "iv": null};
 
-    try {
-      http.Response response = await _nextcloudRepositoryImpl.sendHttpRequest(
-        _localRepositoryImpl.getUser()!,
-        "password/check",
-        jsonEncode({"password": password}),
-      );
-
-      if (response.statusCode == 400) {
-        var body = jsonDecode(response.body);
-        logger.e("statusCode: ${response.statusCode}\nbody: ${response.body}");
-        result["error"] = body["error"];
-      } else if (response.statusCode == 404) {
-        result["error"] =
-            "You need to set a password before. Please update the OTP Manager extension on your Nextcloud server to version 0.3.0 or higher.";
-      } else {
-        var body = jsonDecode(response.body);
-        result["iv"] = body["iv"];
-      }
-    } catch (e) {
-      logger.e(e);
-      result["error"] =
-          "An error encountered while checking password. Try to reload after a while!";
-    }
+    await nextcloudRepository.sendHttpRequest(
+      resource: PasswordAPI.check,
+      data: {"password": password},
+      onComplete: (response) => result["iv"] = jsonDecode(response.body)["iv"],
+      onFailed: (response) => result["error"] = jsonDecode(
+              response.body)["error"] ??
+          "You need to set a password before. Please update the OTP Manager extension on your Nextcloud server to version 0.3.0 or higher.",
+      onError: () => result["error"] =
+          "An error encountered while checking password. Try to reload after a while!",
+    );
 
     return result;
   }
@@ -53,65 +56,73 @@ class NextcloudService {
 
     Map<String, dynamic> syncResult = {
       "error": null,
-      "toAdd": [],
-      "toEdit": []
+      "accounts": {"toAdd": [], "toEdit": []},
+      "sharedAccounts": {"toAdd": [], "toEdit": []},
     };
 
-    final accounts = _localRepositoryImpl.getAllAccounts();
-    final user = _localRepositoryImpl.getUser()!;
+    final accounts = accountRepository.getAll();
+    final sharedAccounts = sharedAccountRepository.getAll();
+    final user = userRepository.get()!;
 
     if (user.password == null || user.iv == null) {
       NavigationService().replaceScreen(authRoute);
     }
 
     for (var e in accounts) {
-      e.encryptedSecret ??=
-          Encryption.encrypt(e.secret, user.password!, user.iv!);
+      e.encryptedSecret ??= encryption.encrypt(data: e.secret);
+      accountRepository.add(e); // update without sync
     }
 
-    var data = jsonEncode({"accounts": jsonDecode(accounts.toString())});
+    final appInfo = await PackageInfo.fromPlatform();
 
-    try {
-      final user = _localRepositoryImpl.getUser();
-      http.Response response = await _nextcloudRepositoryImpl.sendHttpRequest(
-        user,
-        "accounts/sync",
-        data,
-      );
+    var data = {
+      "accounts": jsonDecode(accounts.toString()),
+      "sharedAccounts": jsonDecode(sharedAccounts.toString()),
+      "appVersion": appInfo.version
+    };
 
-      if (response.statusCode == 200) {
-        _localRepositoryImpl.updateNeverSync();
+    await nextcloudRepository.sendHttpRequest(
+      resource: SyncAPI.sync,
+      data: data,
+      onComplete: (response) {
         var body = jsonDecode(response.body);
-        if (body.isNotEmpty) {
-          _localRepositoryImpl.deleteOldAccounts(body["toDelete"]);
-          syncResult["toAdd"] = body["toAdd"];
-          syncResult["toEdit"] = body["toEdit"];
-        }
 
-        if (_localRepositoryImpl.repairPositionError()) sync();
-      } else {
-        logger.e("statusCode: ${response.statusCode}\nbody: ${response.body}");
-        syncResult["error"] =
-            "The nextcloud server returns an error. Try to reload after a while!";
-      }
-    } catch (e) {
-      logger.e(e);
-      syncResult["error"] =
-          "An error encountered while synchronising. Try to reload after a while!";
-    }
+        if (body.isNotEmpty) {
+          accountRepository.updateNeverSync();
+          sharedAccountRepository.updateNeverSync();
+          accountRepository.deleteOld(body["accounts"]["toDelete"]);
+          sharedAccountRepository.deleteOld(body["sharedAccounts"]["toDelete"]);
+
+          syncResult["accounts"] = body["accounts"];
+          syncResult["sharedAccounts"] = body["sharedAccounts"];
+        }
+      },
+      onFailed: (response) {
+        if (response.statusCode == 404) {
+          syncResult["error"] =
+              "Please update the OTP Manager Nextcloud extension to version >= 0.5.0";
+        } else {
+          syncResult["error"] = jsonDecode(response.body)["error"] ??
+              "The nextcloud server returns an error. Try to reload after a while!";
+        }
+      },
+      onError: () => syncResult["error"] =
+          "An error encountered while synchronising. Try to reload after a while!",
+    );
 
     return syncResult;
   }
 
   bool _decryptSecretAccounts(List accounts) {
-    final user = _localRepositoryImpl.getUser()!;
+    final user = userRepository.get()!;
 
     for (var account in accounts) {
       account["encryptedSecret"] = account["secret"];
 
+      if (account["unlocked"] == 0) continue;
+
       try {
-        var decrypted =
-            Encryption.decrypt(account["secret"], user.password!, user.iv!);
+        String decrypted = encryption.decrypt(dataBase64: account["secret"])!;
 
         if (!Base32.isValid(decrypted)) throw FormatException;
 
@@ -119,22 +130,64 @@ class NextcloudService {
       } catch (_) {
         user.password = null;
         user.iv = null;
-        _localRepositoryImpl.updateUser(user);
+        userRepository.update(user);
         return false;
       }
     }
 
     return true;
   }
-  
-  bool syncAccountsToAddToEdit(List accountsToAdd, List accountsToEdit) {
-    if (_decryptSecretAccounts(accountsToAdd) &&
-        _decryptSecretAccounts(accountsToEdit)) {
-      _localRepositoryImpl.addNewAccounts(accountsToAdd);
-      _localRepositoryImpl.updateEditedAccounts(accountsToEdit);
+
+  bool syncAccountsToAddToEdit(
+      Map<String, dynamic> accounts, Map<String, dynamic> sharedAccounts) {
+    if (_decryptSecretAccounts(accounts["toAdd"]) &&
+        _decryptSecretAccounts(accounts["toEdit"]) &&
+        _decryptSecretAccounts(sharedAccounts["toAdd"]) &&
+        _decryptSecretAccounts(sharedAccounts["toEdit"])) {
+      accountRepository.addNew(accounts["toAdd"]);
+      accountRepository.updateEdited(accounts["toEdit"]);
+      sharedAccountRepository.addNew(sharedAccounts["toAdd"]);
+      sharedAccountRepository.updateEdited(sharedAccounts["toEdit"]);
+
       return true;
     } else {
       return false;
     }
+  }
+
+  Future<String?> unlockSharedAccount(
+      int accountId, String sharedPassword) async {
+    final user = userRepository.get()!;
+
+    String? result;
+
+    await nextcloudRepository.sendHttpRequest(
+      resource: "share/unlock",
+      data: {
+        "accountId": accountId,
+        "currentPassword": user.password!,
+        "tempPassword": sharedPassword,
+      },
+      onFailed: (response) => result = jsonDecode(response.body)["error"] ??
+          "An error encountered while checking password. Try to reload after a while!",
+      onError: () => result =
+          "An error encountered while checking password. Try to reload after a while!",
+    );
+
+    return result;
+  }
+
+  Future<int?> updateCounter(dynamic account) async {
+    int? result;
+
+    await nextcloudRepository.sendHttpRequest(
+      resource: account is Account
+          ? AccountAPI.updateCounter
+          : SharedAccountAPI.updateCounter,
+      data: {"secret": account.encryptedSecret},
+      onComplete: (response) => result = int.tryParse(response.body),
+    );
+
+    return result;
   }
 }

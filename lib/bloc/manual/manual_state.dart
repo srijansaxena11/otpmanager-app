@@ -1,7 +1,6 @@
 import 'package:equatable/equatable.dart';
+import 'package:otp_manager/models/shared_account.dart';
 import 'package:otp_manager/utils/uri_decoder.dart';
-
-import '../../models/account.dart';
 
 class ManualState extends Equatable {
   final String iconKey;
@@ -17,6 +16,7 @@ class ManualState extends Equatable {
   final int digitsValue;
   final bool isEdit;
   final String message;
+  final bool isSharedAccount;
 
   const ManualState({
     required this.iconKey,
@@ -32,9 +32,10 @@ class ManualState extends Equatable {
     required this.digitsValue,
     required this.isEdit,
     required this.message,
+    required this.isSharedAccount,
   });
 
-  ManualState.initial(Account? account)
+  ManualState.initial(dynamic account)
       : iconKey = account?.iconKey ?? 'default',
         name = account?.name ?? "",
         issuer = account?.issuer ?? "",
@@ -47,7 +48,8 @@ class ManualState extends Equatable {
         algorithmValue = UriDecoder.getAlgorithmFromAlgo(account?.algorithm),
         digitsValue = account?.digits ?? 6,
         isEdit = account != null,
-        message = "";
+        message = "",
+        isSharedAccount = account is SharedAccount;
 
   ManualState copyWith({
     String? iconKey,
@@ -80,6 +82,7 @@ class ManualState extends Equatable {
       digitsValue: digitsValue ?? this.digitsValue,
       isEdit: isEdit,
       message: message ?? this.message,
+      isSharedAccount: isSharedAccount,
     );
   }
 

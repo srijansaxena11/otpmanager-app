@@ -4,11 +4,10 @@ import 'dart:typed_data';
 import 'package:base32/base32.dart';
 import 'package:diacritic/diacritic.dart';
 import 'package:otp/otp.dart';
+import 'package:otp_manager/utils/algorithms.dart';
 
 import '../../generated_protoc/google_auth.pb.dart';
-import '../main.dart';
 import '../models/account.dart';
-import '../object_box/objectbox.g.dart';
 
 class UriDecoder {
   Map _getNameAndIssuer(Uri queryUriParams) {
@@ -36,12 +35,12 @@ class UriDecoder {
   }
 
   static int getAlgorithmFromString(String algorithm) {
-    int algo = AlgorithmTypes.sha1.index;
+    int algo = Algorithms.sha1.index;
 
     if (algorithm.contains("SHA256")) {
-      algo = AlgorithmTypes.sha256.index;
+      algo = Algorithms.sha256.index;
     } else if (algorithm.contains("SHA512")) {
-      algo = AlgorithmTypes.sha512.index;
+      algo = Algorithms.sha512.index;
     }
 
     return algo;
@@ -65,28 +64,15 @@ class UriDecoder {
 
     List<Account> accounts = [];
 
-    int? lastPosition =
-        (objectBox.store.box<Account>().query(Account_.deleted.equals(false))
-              ..order(Account_.position, flags: Order.descending))
-            .build()
-            .findFirst()
-            ?.position;
-    int position;
-
-    if (lastPosition != null) {
-      position = lastPosition + 1;
-    } else {
-      position = 0;
-    }
-
     payload.otpParameters.asMap().forEach((index, params) {
       var tmp = params.toProto3Json() as Map;
       tmp["name"] = Uri.decodeFull(removeDiacritics(tmp["name"].toString()));
+      String secret = base32
+          .encode(Uint8List.fromList(payload.otpParameters[index].secret))
+          .toUpperCase();
 
       var newAccount = Account(
-        secret: base32
-            .encode(Uint8List.fromList(payload.otpParameters[index].secret))
-            .toUpperCase(),
+        secret: secret,
         name:
             tmp["name"].contains(':') ? tmp["name"].split(':')[1] : tmp["name"],
         issuer: Uri.decodeFull(removeDiacritics(tmp["issuer"] ?? "")),
@@ -94,11 +80,9 @@ class UriDecoder {
         digits: 6,
         type: tmp["type"],
         period: 30,
-        position: position,
       );
 
       accounts.add(newAccount);
-      position++;
     });
 
     return accounts;
@@ -114,19 +98,6 @@ class UriDecoder {
     } else {
       var tmp = uriDecoded.queryParameters;
       var nameAndIssuer = _getNameAndIssuer(uriDecoded);
-      int? lastPosition =
-          (objectBox.store.box<Account>().query(Account_.deleted.equals(false))
-                ..order(Account_.position, flags: Order.descending))
-              .build()
-              .findFirst()
-              ?.position;
-      int position;
-
-      if (lastPosition != null) {
-        position = lastPosition + 1;
-      } else {
-        position = 0;
-      }
 
       var newAccount = Account(
         secret: tmp["secret"].toString().toUpperCase(),
@@ -136,7 +107,6 @@ class UriDecoder {
         digits: int.tryParse(tmp["digits"].toString()),
         type: uriDecoded.host,
         period: int.tryParse(tmp["period"].toString()),
-        position: position,
       );
 
       accounts.add(newAccount);

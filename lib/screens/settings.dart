@@ -42,7 +42,10 @@ class Settings extends HookWidget {
                   title: const Text("Bug Report"),
                   content: RichText(
                     text: TextSpan(
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.normal),
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleMedium
+                          ?.copyWith(fontWeight: FontWeight.normal),
                       text: "If you have found a bug and want to report "
                           "it to the developer, contact him via email on ",
                       children: [

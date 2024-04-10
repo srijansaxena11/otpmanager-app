@@ -15,22 +15,28 @@ class Home extends HookWidget {
   Widget build(BuildContext context) {
     return UpgradeAlert(
       upgrader: Upgrader(
-        debugLogging: false,
-        debugDisplayOnce: false,
-        showIgnore: false,
-        showLater: true,
-        durationUntilAlertAgain: const Duration(hours: 2),
-        willDisplayUpgrade: ({String? appStoreVersion, required bool display, String? installedVersion, String? minAppVersion}) {
-          if (!display) {
-            context.read<HomeBloc>().add(const IsAppUpdatedChanged(value: true));
+          debugLogging: false,
+          debugDisplayOnce: false,
+          showIgnore: false,
+          showLater: true,
+          durationUntilAlertAgain: const Duration(hours: 2),
+          willDisplayUpgrade: ({
+            String? appStoreVersion,
+            required bool display,
+            String? installedVersion,
+            String? minAppVersion,
+          }) {
+            if (!display) {
+              context
+                  .read<HomeBloc>()
+                  .add(const IsAppUpdatedChanged(value: true));
+              context.read<HomeBloc>().add(NextcloudSync());
+            }
+          },
+          onLater: () {
             context.read<HomeBloc>().add(NextcloudSync());
-          }
-        },
-        onLater: () {
-          context.read<HomeBloc>().add(NextcloudSync());
-          return true;
-        }
-      ),
+            return true;
+          }),
       child: const Scaffold(
         appBar: HomeAppBar(),
         body: HomeBody(),

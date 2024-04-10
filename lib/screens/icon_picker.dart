@@ -43,7 +43,8 @@ class IconPicker extends HookWidget {
                   },
                 ),
               ),
-              if (state.searchBarValue == "" && state.iconsBestMatch.isNotEmpty) ...[
+              if (state.searchBarValue == "" &&
+                  state.iconsBestMatch.isNotEmpty) ...[
                 const Text(
                   'Best match based on issuer',
                   style: TextStyle(fontSize: 18),

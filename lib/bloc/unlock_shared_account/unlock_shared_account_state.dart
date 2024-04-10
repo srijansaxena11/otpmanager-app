@@ -1,38 +1,38 @@
 import 'package:equatable/equatable.dart';
 
-class AuthState extends Equatable {
+class UnlockSharedAccountState extends Equatable {
   final int attempts;
   final String password;
   final String message;
-  final bool canShowFingerAuth;
+  final String errorMsg;
 
-  const AuthState({
+  const UnlockSharedAccountState({
     required this.attempts,
     required this.password,
     required this.message,
-    required this.canShowFingerAuth,
+    required this.errorMsg,
   });
 
-  const AuthState.initial()
+  const UnlockSharedAccountState.initial()
       : attempts = 3,
         password = "",
         message = "",
-        canShowFingerAuth = false;
-
-  AuthState copyWith({
+        errorMsg = "";
+  UnlockSharedAccountState copyWith({
     int? attempts,
     String? password,
     String? message,
+    String? errorMsg,
     bool? canShowFingerAuth,
   }) {
-    return AuthState(
+    return UnlockSharedAccountState(
       attempts: attempts ?? this.attempts,
       password: password ?? this.password,
       message: message ?? this.message,
-      canShowFingerAuth: canShowFingerAuth ?? this.canShowFingerAuth,
+      errorMsg: errorMsg ?? this.errorMsg,
     );
   }
 
   @override
-  List<Object> get props => [attempts, password, message, canShowFingerAuth];
+  List<Object> get props => [attempts, password, message, errorMsg];
 }

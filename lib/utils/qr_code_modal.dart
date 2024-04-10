@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:pretty_qr_code/pretty_qr_code.dart';
 
-import '../models/account.dart';
-
 void showQrCodeModal(
   BuildContext context,
-  Account account,
+  dynamic account,
 ) =>
     showDialog(
       context: context,

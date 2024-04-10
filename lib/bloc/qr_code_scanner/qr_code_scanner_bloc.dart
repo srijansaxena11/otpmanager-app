@@ -1,16 +1,20 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:otp_manager/bloc/qr_code_scanner/qr_code_scanner_event.dart';
 import 'package:otp_manager/bloc/qr_code_scanner/qr_code_scanner_state.dart';
-import 'package:otp_manager/repository/local_repository.dart';
+import 'package:otp_manager/repository/interface/account_repository.dart';
 
+import '../../domain/account_service.dart';
 import '../../models/account.dart';
 import '../../utils/uri_decoder.dart';
 
 class QrCodeScannerBloc extends Bloc<QrCodeScannerEvent, QrCodeScannerState> {
-  final LocalRepositoryImpl localRepositoryImpl;
+  final AccountRepository accountRepository;
+  final AccountService accountService;
 
-  QrCodeScannerBloc({required this.localRepositoryImpl})
-      : super(
+  QrCodeScannerBloc({
+    required this.accountRepository,
+    required this.accountService,
+  }) : super(
           const QrCodeScannerState.initial(),
         ) {
     on<ErrorChanged>(_onErrorChanged);
@@ -31,9 +35,10 @@ class QrCodeScannerBloc extends Bloc<QrCodeScannerEvent, QrCodeScannerState> {
     var atLeastOneAdded = false;
 
     for (var account in newAccounts) {
-      if (!localRepositoryImpl.accountAlreadyExists(account.secret)) {
+      if (!accountRepository.alreadyExists(account.secret)) {
         atLeastOneAdded = true;
-        localRepositoryImpl.addAccount(account);
+        account.position = accountService.getLastPosition() + 1;
+        accountRepository.add(account);
       }
     }
 

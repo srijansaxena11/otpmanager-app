@@ -1,37 +1,38 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:nextcloud/core.dart';
 import 'package:nextcloud/nextcloud.dart';
 import 'package:otp_manager/bloc/web_viewer/web_viewer_event.dart';
 import 'package:otp_manager/bloc/web_viewer/web_viewer_state.dart';
 import 'package:otp_manager/models/user.dart';
+import 'package:otp_manager/repository/interface/user_repository.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../main.dart' show logger;
-import '../../repository/local_repository.dart';
 import '../../routing/constants.dart';
 import '../../routing/navigation_service.dart';
 
 class WebViewerBloc extends Bloc<WebViewerEvent, WebViewerState> {
-  final LocalRepositoryImpl localRepositoryImpl;
+  final UserRepository userRepository;
 
   final NavigationService _navigationService = NavigationService();
 
   final String nextcloudUrl;
 
-  WebViewerBloc({required this.nextcloudUrl, required this.localRepositoryImpl})
+  WebViewerBloc({required this.nextcloudUrl, required this.userRepository})
       : super(WebViewerState.initial()) {
     on<InitNextcloudLogin>(_onInitNextcloudLogin);
     on<UpdateLoadingScreen>(_onUpdateLoadingScreen);
   }
 
-  Future<NextcloudCoreLoginFlowInit> _nextcloudLoginSetup() async {
+  Future<void> _nextcloudLoginFlowV2() async {
     final client = NextcloudClient(
-      nextcloudUrl,
+      Uri.parse(nextcloudUrl),
       userAgentOverride: 'OTP Manager App',
     );
 
-    final NextcloudCoreLoginFlowInit init = await client.core.initLoginFlow();
+    final init = await client.core.clientFlowLoginV2.init();
 
     state.webViewController
       ..setNavigationDelegate(
@@ -45,17 +46,17 @@ class WebViewerBloc extends Bloc<WebViewerEvent, WebViewerState> {
             );
 
             if (url.endsWith("grant") || url.endsWith("apptoken")) {
-              client.core
-                  .getLoginFlowResult(token: init.poll.token)
+              client.core.clientFlowLoginV2
+                  .poll(token: init.body.poll.token)
                   .then((result) {
-                localRepositoryImpl.updateUser(
+                userRepository.update(
                   User(
                     url: nextcloudUrl,
-                    appPassword: result.appPassword,
+                    appPassword: result.body.appPassword,
                     isGuest: false,
                   ),
                 );
-                _navigationService.resetToScreen(homeRoute);
+                _navigationService.resetToScreen(authRoute);
               });
             }
           },
@@ -77,9 +78,7 @@ class WebViewerBloc extends Bloc<WebViewerEvent, WebViewerState> {
           },
         ),
       )
-      ..loadRequest(Uri.parse(init.login));
-
-    return init;
+      ..loadRequest(Uri.parse(init.body.login));
   }
 
   void _onUpdateLoadingScreen(
@@ -91,7 +90,7 @@ class WebViewerBloc extends Bloc<WebViewerEvent, WebViewerState> {
       InitNextcloudLogin event, Emitter<WebViewerState> emit) async {
     state.webViewController.setJavaScriptMode(JavaScriptMode.unrestricted);
 
-    await _nextcloudLoginSetup()
+    await _nextcloudLoginFlowV2()
         .timeout(const Duration(seconds: 10))
         .catchError((error, stackTrace) {
       logger.e(error);

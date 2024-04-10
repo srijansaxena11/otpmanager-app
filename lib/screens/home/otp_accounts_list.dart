@@ -1,28 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:otp_manager/domain/nextcloud_service.dart';
+import 'package:otp_manager/repository/interface/account_repository.dart';
+import 'package:otp_manager/repository/interface/shared_account_repository.dart';
 
 import '../../bloc/home/home_bloc.dart';
 import '../../bloc/home/home_event.dart';
 import '../../bloc/home/home_state.dart';
 import '../../bloc/otp_account/otp_account_bloc.dart';
-import '../../repository/local_repository.dart';
-import '../../utils/show_snackbar.dart';
-import '../otp_account.dart';
+import 'otp_account.dart';
 
 class OtpAccountsList extends StatelessWidget {
   const OtpAccountsList({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<HomeBloc, HomeState>(
-      listener: (context, state) {
-        if (state.syncError != "") {
-          showSnackBar(context: context, msg: state.syncError);
-        }
-        if (state.accountDeleted != "") {
-          showSnackBar(context: context, msg: state.accountDeleted);
-        }
-      },
+    return BlocBuilder<HomeBloc, HomeState>(
       builder: (context, state) {
         return ReorderableListView.builder(
           shrinkWrap: true,
@@ -34,11 +27,15 @@ class OtpAccountsList extends StatelessWidget {
           physics: const AlwaysScrollableScrollPhysics(),
           itemBuilder: (context, index) {
             var account = state.accounts[index];
+
             return BlocProvider<OtpAccountBloc>(
-              key: ValueKey(account.id),
+              key: ValueKey(account.secret),
               create: (context) => OtpAccountBloc(
                 homeBloc: context.read<HomeBloc>(),
-                localRepositoryImpl: context.read<LocalRepositoryImpl>(),
+                accountRepository: context.read<AccountRepository>(),
+                nextcloudService: context.read<NextcloudService>(),
+                sharedAccountRepository:
+                    context.read<SharedAccountRepository>(),
               ),
               child: OtpAccount(
                 account: account,

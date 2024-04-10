@@ -1,5 +1,4 @@
 import 'package:equatable/equatable.dart';
-import 'package:otp_manager/models/account.dart';
 
 class HomeEvent extends Equatable {
   const HomeEvent();
@@ -40,18 +39,9 @@ class Reorder extends HomeEvent {
 }
 
 class DeleteAccount extends HomeEvent {
-  const DeleteAccount({required this.id});
+  const DeleteAccount({required this.account});
 
-  final int id;
-
-  @override
-  List<Object> get props => [id];
-}
-
-class IncrementCounter extends HomeEvent {
-  const IncrementCounter({required this.account});
-
-  final Account account;
+  final dynamic account; // Account | SharedAccount
 
   @override
   List<Object> get props => [account];
@@ -64,4 +54,13 @@ class SearchBarValueChanged extends HomeEvent {
 
   @override
   List<Object> get props => [value];
+}
+
+class ShowMessage extends HomeEvent {
+  const ShowMessage({required this.message});
+
+  final String message;
+
+  @override
+  List<Object> get props => [message];
 }

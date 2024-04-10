@@ -1,31 +1,33 @@
 import 'package:equatable/equatable.dart';
 import 'package:otp_manager/models/user.dart';
 
-import '../../models/account.dart';
-
 class AccountDetailsState extends Equatable {
-  final Account account;
-  final String accountDeleted;
+  final dynamic account; // Account | ShareAccount
+  final String message;
   final String password;
+  final String serverUrl;
 
   const AccountDetailsState({
     required this.account,
-    required this.accountDeleted,
+    required this.message,
     required this.password,
+    required this.serverUrl,
   });
 
   AccountDetailsState.initial(this.account, User user)
-      : accountDeleted = "",
-        password = user.password ?? "";
+      : message = "",
+        password = user.password!,
+        serverUrl = user.url;
 
-  AccountDetailsState copyWith({String? accountDeleted}) {
+  AccountDetailsState copyWith({String? message}) {
     return AccountDetailsState(
       account: account,
-      accountDeleted: accountDeleted ?? this.accountDeleted,
+      message: message ?? this.message,
       password: password,
+      serverUrl: serverUrl,
     );
   }
 
   @override
-  List<Object> get props => [accountDeleted];
+  List<Object> get props => [message];
 }

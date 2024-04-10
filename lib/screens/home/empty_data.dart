@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 
 class EmptyData extends StatelessWidget {
-  const EmptyData({Key? key}) : super(key: key);
+  const EmptyData({
+    Key? key,
+    required this.imageName,
+    required this.title,
+    required this.description,
+  }) : super(key: key);
+
+  final String imageName;
+  final String title;
+  final String description;
 
   @override
   Widget build(BuildContext context) {
-    return const CustomScrollView(
+    return CustomScrollView(
       slivers: [
         SliverFillRemaining(
           child: Column(
@@ -16,14 +25,14 @@ class EmptyData extends StatelessWidget {
               Image(
                 height: 300,
                 image: AssetImage(
-                  "./assets/images/no_account.png",
+                  "./assets/images/$imageName.png",
                 ),
               ),
               Padding(
-                padding: EdgeInsets.only(top: 10),
+                padding: const EdgeInsets.only(top: 10),
                 child: Text(
-                  "Add your first account",
-                  style: TextStyle(
+                  title,
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
                   ),
@@ -34,11 +43,10 @@ class EmptyData extends StatelessWidget {
                 child: SizedBox(
                   width: 300,
                   child: Padding(
-                    padding: EdgeInsets.only(top: 8),
+                    padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      "You currently have no account. "
-                      "Synchronise by dragging down or create a new one below.",
-                      style: TextStyle(
+                      description,
+                      style: const TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: Colors.grey,

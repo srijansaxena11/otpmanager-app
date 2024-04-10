@@ -21,19 +21,11 @@ class OtpManager extends HookWidget {
             colorScheme: lightColorScheme,
             primaryColor: Colors.blue,
             primarySwatch: Colors.blue,
-            /*textTheme: TextTheme(
-              titleMedium: GoogleFonts.roboto(/*color: Colors.white*/),
-              titleLarge: GoogleFonts.roboto(),
-            ),*/
           ),
           darkTheme: ThemeData(
             colorScheme: darkColorScheme,
             primaryColor: Colors.blue,
             primarySwatch: Colors.blue,
-            /*textTheme: TextTheme(
-              titleMedium: GoogleFonts.roboto(/*color: Colors.white*/),
-              titleLarge: GoogleFonts.roboto(),
-            ),*/
           ),
           themeMode: state.darkTheme ? ThemeMode.dark : ThemeMode.light,
           onGenerateRoute: Router.generateRoute,

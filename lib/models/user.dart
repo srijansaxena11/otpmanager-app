@@ -1,6 +1,12 @@
 import 'package:objectbox/objectbox.dart';
 
-enum PasswordAskTime { everyOpening, oneMinutes, threeMinutes, fiveMinutes, never }
+enum PasswordAskTime {
+  everyOpening,
+  oneMinutes,
+  threeMinutes,
+  fiveMinutes,
+  never
+}
 
 @Entity()
 class User {
@@ -67,8 +73,8 @@ class User {
   @override
   toString() => '{'
       'id: $id, '
-      'url: $url, '
-      'appPassword: $appPassword, '
+      'url: "$url", '
+      'appPassword: "$appPassword", '
       'copyWithTap: $copyWithTap, '
       'darkTheme: $darkTheme, '
       'passwordAskTime: $passwordAskTime, '

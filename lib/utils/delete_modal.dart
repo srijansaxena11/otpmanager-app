@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 
-import '../models/account.dart';
-
 void showDeleteModal(
   BuildContext context,
-  Account account,
+  dynamic account,
   Function onPressed,
 ) =>
     showDialog(
